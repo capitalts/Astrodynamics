@@ -1,4 +1,5 @@
-function [fragments]=frag_exp_SBM_vec(p1_in)
+function [fragments]=frag_exp_SBM_vec(p1_in, LB)
+% Modified by Tory and Jackie Smith May 2023
 % Modified from fragmentation.m by djang in Oct 2022
 % More edits by pmachuca
 %p1_in = [p1.mass,p1.radius,p1.r,p1.v,p1.objectclass]
@@ -44,7 +45,7 @@ function [fragments]=frag_exp_SBM_vec(p1_in)
 %     ylim([1,10000]);  set(gca, 'XTickLabel',get(gca,'XTick')) ; set(gca, 'YTickLabel',get(gca,'YTick')) 
 %     legend('NASA: Ncum = 6 Lc^-1.6');
 
-LB = 0.1;       % trackable diameter dtr = 10 cm; also, characteristic length L_c later
+% LB = 0.1;       % trackable diameter dtr = 10 cm; also, characteristic length L_c later
 
 p1_mass = p1_in(1); p1_radius = p1_in(2);
 % p1_r = p1_in(3:5); p1_v = p1_in(6:8);
@@ -97,15 +98,20 @@ d = d_pdf(randperm(numel(d_pdf)));% Do not limit number of fragments to be equal
 % ylabel('Number of fragments [-]')
 % title('Number of fragments vs diameter')
 % 
-    figure(22); clf; 
-     
-    subplot(211); Lcs = logspace(-2,1,100);  loglog(Lcs, 6 * Lcs.^-1.6); grid on; ylim([1,10000]); 
-    hold on; loglog(dd_edges(1:end),nddcdf); xlabel('diam'); ylabel('CDF'); title('theoretical reverse CDF');
-    legend('NASA: N_{cum} = 6s Lc^{-1.6}','nddcdf from code');
-%     subplot(323); histogram(d_pdf); xlabel('diam'); ylabel('count'); title('PDF to sample from')
-%     subplot(325); loglog(dd_means, flip(cumsum(flip(histcounts(repelem(dd_means,round(ndd))',dd_edges)))),'-x'); xlabel('Diam (m)'); ylabel('cumulative count'); title('CDF of above (for shape)');
-%     subplot(324); histogram(d); xlabel('diam'); ylabel('count'); title('PDF of sampled d');
-    subplot(212); loglog(dd_edges, 6 * dd_edges.^-1.6); hold on; loglog(dd_means, flip(cumsum(flip(histcounts(d,dd_edges)))),'-x'); xlabel('Diam (m)'); ylabel('cumulative count'); title('CDF of sampled debris');
+    figure
+    Lcs = logspace(-2,1,100);  
+    loglog(Lcs, 6 * Lcs.^-1.6,'Linewidth',2);  
+    loglog(dd_edges(1:end),nddcdf); 
+%     xlabel('diam'); ylabel('CDF'); title('theoretical reverse CDF');
+%     legend('NASA: N_{cum} = 6s Lc^{-1.6}','nddcdf from code');
+clf
+loglog(dd_edges, 6 * dd_edges.^-1.6,'Linewidth',2); hold on; 
+loglog(dd_means, flip(cumsum(flip(histcounts(d,dd_edges)))),'-x','Linewidth',2); 
+xlim([.1 1])
+xlabel('Characteristic Length (m)','FontSize',16); 
+ylabel('Cumulative Debris Count','FontSize',16); 
+title('CDF of Predicted Debris by Size', 'FontSize',20);
+grid on
     
 % %Old code:
 % nddcdf = 6 * cs * dd_edges.^-1.6;            % CUMULATIVE distribution of n's  (eq 2.68)
@@ -220,14 +226,15 @@ end
 % create fragments
 fragments = [[d; d_rem] [A; A_rem] [Am; Am_rem] [m; m_rem] dv dv_vec(:,1) dv_vec(:,2) dv_vec(:,3)];
 % DEBUG: HISTOGRAM OF THESE ^
-    figure(10);clf;
+    figure
     histogram(d,100); xlabel('d (m)');
-%     subplot(512); histogram(A,100); xlabel('A (m^2)');
-%     subplot(513); histogram(Am,100); xlabel('Am (m^2/kg)');
-%     subplot(514); histogram(m,100); xlabel('m (kg)');
-%     subplot(515); histogram(dv * 1000,[0:10:1000]); xlabel('dv (m/s)');
-    title('fragment distributions', sprintf('Original mass: %0.1f kg, radius: %0.1f m',p1_mass, p1_radius));
-%     pause;
+
+ylabel('Debris Count', 'FontSize',16)
+xlabel('Characteristic Length (m)', 'FontSize',16)
+
+% title('Fragment Distributions', sprintf('Original mass: %0.1f kg, radius: %0.1f m',p1_mass, p1_radius));
+title('Fragment Distribution', 'FontSize',20);
+grid on%     pause;
 
 if abs(sum([m; m_rem]) - M) > M*0.05
     warning('Total sum of debris mass (%0.1f kg) differs from "mass" of original objects (%0.1f kg)', ...

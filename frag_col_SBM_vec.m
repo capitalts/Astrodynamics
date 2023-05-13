@@ -1,4 +1,6 @@
-function [fragments1, fragments2] = frag_col_SBM_vec(p1_in, p2_in, dv)
+function [fragments1, fragments2] = frag_col_SBM_vec(p1_in, p2_in, dv, LB)
+% Modified by Tory and Jackie Smith May 2023
+
 % Collision model following NASA EVOLVE 4.0 standard breakup model (2001)
 % with the revision in ODQN "Proper Implementation of the 1998 NASA Breakup Model" (2011)
 %p1_in = [p1.mass,p1.radius,p1.r,p1.v,p1.objectclass]
@@ -39,7 +41,7 @@ function [fragments1, fragments2] = frag_col_SBM_vec(p1_in, p2_in, dv)
 
 % "Validation" with the ESA's "Validated" C++ code is on-going. 
 
-LB = 0.01; %10 cm lower bound; L_c
+% LB = 0.02; % 2 cm lower bound; L_c
 
 % Ensure p1_mass > p2_mass, or p1_radius>p2_radius if p1_mass=p2_mass
 if p1_in(1)<p2_in(1) || (p1_in(1)==p2_in(1) && p1_in(2)<p2_in(2)) %p1_mass < p2_mass || (p1_mass == p2_mass && p1_radius < p2_radius)
@@ -83,23 +85,15 @@ d_pdf = repelem(dd_means,floor_ndd+add_sampling)';   % PDF of debris objects bet
 d = d_pdf(randperm(numel(d_pdf))); % Do not limit number of fragments to be equal to 'num'
 % d = d_pdf(randi(numel(d_pdf),ceil(num),1)); % Limit number of fragments to be equal to 'num'
 
-% figure(50)
-% histogram(d,dd_edges)
-% hold on
-% plot(dd_means,ndd,'k')
-% set(gca,'YScale','log','XScale','log')
-% xlabel('d [m]')
-% ylabel('Number of fragments [-]')
-% title('Number of fragments vs diameter')
-% % 
-    figure(22); clf; 
-    subplot(211);  Lcs = logspace(-2,1,100); loglog(Lcs, 0.1 * M^(0.75) * Lcs.^(-1.71)); grid on; ylim([1,10000]); 
-    hold on; loglog(dd_edges(1:end),nddcdf); xlabel('diam'); ylabel('CDF'); title('theoretical reverse CDF');
-    legend('NASA: N_{cum} = 0.1 M_p^{0.75} L_c^{-1.71}','nddcdf from code');
-%     subplot(323); histogram(d_pdf); xlabel('diam'); ylabel('count'); title('PDF to sample from')
-%     subplot(325); loglog(dd_means, flip(cumsum(flip(histcounts(repelem(dd_means,round(ndd))',dd_edges)))),'-x'); xlabel('Diam (m)'); ylabel('cumulative count'); title('CDF of above (for shape)');
-%     subplot(324); histogram(d); xlabel('diam'); ylabel('count'); title('PDF of sampled d');
-    subplot(212); loglog(dd_edges, 0.1 * M^(0.75) * dd_edges.^(-1.71)); hold on; loglog(dd_means, flip(cumsum(flip(histcounts(d,dd_edges)))),'-x'); xlabel('Diam (m)'); ylabel('cumulative count'); title('CDF of sampled debris sizes');
+figure
+loglog(dd_edges, (0.1 * M^(0.75) * dd_edges.^(-1.71)),'LineWidth',2); 
+hold on; 
+loglog(dd_means, (flip(cumsum(flip(histcounts(d,dd_edges))))),'-x','LineWidth',2); 
+xlim([.1 1])
+xlabel('Characteristic Length (m)','FontSize',16); 
+ylabel('Cumulative Debris Count','FontSize',16); 
+title('CDF of Predicted Debris by Size', 'FontSize',20);
+grid on
     
 % calculate mass of objects [LB, 1 m] by d > A > Am > m
 A = 0.556945*d.^(2.0047077);            % calculate area; Eq 2.72
@@ -291,19 +285,19 @@ else
         d_rem = []; A_rem = []; Am_rem = []; m_rem = []; idx_rem1 = []; idx_rem2 = [];  % no "remnants" exist
     end
 end
-figure
-scatter(d,m,'kx')
-hold on
-scatter(d_rem(idx_rem1),m_rem(idx_rem1),'rx')
-scatter(d_rem(idx_rem2),m_rem(idx_rem2),'bx')
-scatter(p1_radius*2,p1_mass,'ro')
-scatter(p2_radius*2,p2_mass,'bo')
-legend('General frags.','p1 frags.','p2 frags.','p1','p2','Location','northwest')
-% plot([d;d_rem],0.556945*[d;d_rem].^2.0047077./10.^(-0.925),'k-')
-set(gca,'XScale','log','YScale','log')
-title('m vs d')
-xlabel('d')
-ylabel('m')
+% figure
+% scatter(d,m,'kx')
+% hold on
+% scatter(d_rem(idx_rem1),m_rem(idx_rem1),'rx')
+% scatter(d_rem(idx_rem2),m_rem(idx_rem2),'bx')
+% scatter(p1_radius*2,p1_mass,'ro')
+% scatter(p2_radius*2,p2_mass,'bo')
+% legend('General frags.','p1 frags.','p2 frags.','p1','p2','Location','northwest')
+% % plot([d;d_rem],0.556945*[d;d_rem].^2.0047077./10.^(-0.925),'k-')
+% set(gca,'XScale','log','YScale','log')
+% title('m vs d')
+% xlabel('d')
+% ylabel('m')
 
 
 
@@ -351,16 +345,14 @@ end
 % create fragments
 fragments = [[d; d_rem] [A; A_rem] [Am; Am_rem] [m; m_rem] dv dv_vec(:,1) dv_vec(:,2) dv_vec(:,3)];
 % HISTOGRAM OF THESE ^
-figure(10);clf;
-% subplot(511); 
-histogram(d,100); xlabel('d (m)');
-% subplot(512); histogram(A,100); xlabel('A (m^2)');
-% subplot(513); histogram(Am,100); xlabel('Am (m^2/kg)');
-% subplot(514); histogram(m,100); xlabel('m (kg)');
-% subplot(515); histogram(dv * 1000,[0:10:1000]); xlabel('dv (m/s)');
-% subplot(511); 
-title('fragment distributions', sprintf('Original mass: %0.1f kg, radius: %0.1f m',p1_mass, p1_radius));
+figure
+histogram(d,100)
+ylabel('Debris Count', 'FontSize',16)
+xlabel('Characteristic Length (m)', 'FontSize',16)
 
+% title('Fragment Distributions', sprintf('Original mass: %0.1f kg, radius: %0.1f m',p1_mass, p1_radius));
+title('Fragment Distribution', 'FontSize',20);
+grid on
 if abs(sum([m; m_rem]) - M) > M*0.05
     warning('Total sum of debris mass (%0.1f kg) differs from "mass" of original objects (%0.1f kg)', ...
         sum([m; m_rem]), M);
